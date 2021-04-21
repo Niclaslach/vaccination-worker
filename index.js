@@ -1,30 +1,109 @@
-const Router = require('./router')
-
-/**
- * Example of how router can be used in an application
- *  */
 addEventListener('fetch', event => {
     event.respondWith(handleRequest(event.request))
 })
 
-function handler(request) {
-    const init = {
-        headers: { 'content-type': 'application/json' },
-    }
-    const body = JSON.stringify({ some: 'json' })
-    return new Response(body, init)
-}
+/**
+ * Respond to the request
+ * @param {Request} request
+ */
 
 async function handleRequest(request) {
-    const r = new Router()
-    // Replace with the appropriate paths and handlers
-    r.get('.*/bar', () => new Response('responding for /bar'))
-    r.get('.*/foo', request => handler(request))
-    r.post('.*/foo.*', request => handler(request))
-    r.get('/demos/router/foo', request => fetch(request)) // return the response from the origin
+    const { searchParams } = new URL(request.url)
+    const duration = 5 * 60 * 1000
+    console.log(searchParams.get("countries"))
+    const countries = searchParams.get("countries").split(",")
+    // console.log(countries[0])
+    // console.log(typeof(countries))
+    var vaccinationWorldData = await getData()
+    
+    
+    //return new Response(JSON.stringify(vaccinationWorldData))
+    vaccinationWorldData = getCountries(vaccinationWorldData, countries)
 
-    r.get('/', () => new Response('Hello worker!')) // return a default message for the root route
+    const icons = getIcons()
 
-    const resp = await r.route(request)
-    return resp
+    let frames = []
+    
+    for (vaccinationCountryData of vaccinationWorldData) {
+        try {
+            frames.push({
+                text: beautifyNumber(vaccinationCountryData.people_vaccinated),
+                duration: duration,
+                icon: icons[vaccinationCountryData.iso_code],
+                goalData: {
+                    start: 0,
+                    current: vaccinationCountryData.people_vaccinated_per_hundred,
+                    end: 100
+                }
+            })
+        }
+        catch {}
+    }
+    
+    return new Response(JSON.stringify({frames: frames}), { status: 200 })
+}
+
+
+async function getData() {
+    const response = await fetch('https://github.com/owid/covid-19-data/raw/master/public/data/vaccinations/vaccinations.json')
+
+    const server = response.headers.get('server')
+
+    const isThisWorkerErrorNotErrorWithinScrapedSite = (
+        [530, 503, 502, 403, 400].includes(response.status) &&
+        (server === 'cloudflare' || !server /* Workers preview editor */)
+    )
+
+    if (isThisWorkerErrorNotErrorWithinScrapedSite) {
+        return generateJSONResponse({
+            error: `Status ${response.status} requesting ${url}`
+        }, pretty)
+    }
+
+    let rawVaccinationData = await response.json();
+    console.log(rawVaccinationData[0])
+    console.log(rawVaccinationData[0].data.length - 1)
+
+    let latestVaccinations = []
+    for (country of rawVaccinationData) {
+        latestVaccinations.push({
+            country: country.country,
+            iso_code: country.iso_code,
+            ...country.data[country.data.length - 1]
+        })
+    }
+
+
+    return latestVaccinations
+    
+}
+
+
+function getCountries(data, countries){
+
+    let selectedData = []
+
+    for (countryData of data) {
+        for (country of countries) {
+            if (countryData.iso_code == country) {
+                selectedData.push(countryData)
+                break
+            }
+        }
+    }
+
+    return selectedData
+}
+
+function beautifyNumber(int) {
+    const str = String(int)
+    return String((str.length > 7) ? str.substr(0, str.length - 6) + "." + str.substr(str.length - 6, 3) + "m" : str);
+}
+
+
+function getIcons() {
+    return {
+        DEU: "i44344",
+        DNK: "i44348"
+    }
 }
