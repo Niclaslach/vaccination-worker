@@ -1,0 +1,7 @@
+name = "vaccination-worker"
+type = "webpack"
+
+account_id = "<YourAccountID>"
+workers_dev = true
+route = ""
+zone_id = ""
