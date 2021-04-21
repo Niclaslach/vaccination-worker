@@ -1,6 +1,13 @@
+const Router = require('./router')
+
+
 addEventListener('fetch', event => {
     event.respondWith(handleRequest(event.request))
 })
+
+addEventListener("scheduled", event => {
+    event.waitUntil(handleUpdateData())
+  })
 
 /**
  * Respond to the request
@@ -8,29 +15,43 @@ addEventListener('fetch', event => {
  */
 
 async function handleRequest(request) {
+    const r = new Router()
+
+    r.get('.*/get_data', () => handleUpdateData())
+
+    r.post('.*/la_metric', request => handleLaMetric(request))
+    r.get('.*/la_metric', request => handleLaMetric(request))
+
+    const resp = await r.route(request)
+    return resp
+}
+
+async function handleUpdateData() {
+    const vaccinationWorldData = await getData()
+    
+    await vaccination_KV.put("vaccinationWorldData", JSON.stringify(vaccinationWorldData))
+
+    return new Response(`Updated ${vaccinationWorldData.length} Countries`, { status: 200 })
+}
+
+
+
+async function handleLaMetric(request) {
+
     const { searchParams } = new URL(request.url)
     const duration = 5 * 60 * 1000
     console.log(searchParams.get("countries"))
     const countries = searchParams.get("countries").split(",")
-    // console.log(countries[0])
-    // console.log(typeof(countries))
-    var vaccinationWorldData = await getData()
-    
-    
-    //return new Response(JSON.stringify(vaccinationWorldData))
-    await vaccination_KV.put("vaccinationWorldData", JSON.stringify(vaccinationWorldData))
-    //console.log(await vaccination_KV.get("vaccinationWorldData"))
 
-    let vaccinationWorldData2 = await vaccination_KV.get("vaccinationWorldData", {type: "json"})
-    console.log(vaccinationWorldData2)
+    let vaccinationWorldData = await vaccination_KV.get("vaccinationWorldData", {type: "json"})
 
-    vaccinationWorldData2 = getCountries(vaccinationWorldData2, countries)
+    vaccinationWorldData = getCountries(vaccinationWorldData, countries)
 
     const icons = getIcons()
 
     let frames = []
     
-    for (vaccinationCountryData of vaccinationWorldData2) {
+    for (vaccinationCountryData of vaccinationWorldData) {
         try {
             frames.push({
                 text: beautifyNumber(vaccinationCountryData.people_vaccinated),
@@ -66,7 +87,7 @@ async function getData() {
         }, pretty)
     }
 
-    let rawVaccinationData = await response.json();
+    const rawVaccinationData = await response.json();
     console.log(rawVaccinationData[0])
     console.log(rawVaccinationData[0].data.length - 1)
 
