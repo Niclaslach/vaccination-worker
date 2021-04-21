@@ -18,13 +18,19 @@ async function handleRequest(request) {
     
     
     //return new Response(JSON.stringify(vaccinationWorldData))
-    vaccinationWorldData = getCountries(vaccinationWorldData, countries)
+    await vaccination_KV.put("vaccinationWorldData", JSON.stringify(vaccinationWorldData))
+    //console.log(await vaccination_KV.get("vaccinationWorldData"))
+
+    let vaccinationWorldData2 = await vaccination_KV.get("vaccinationWorldData", {type: "json"})
+    console.log(vaccinationWorldData2)
+
+    vaccinationWorldData2 = getCountries(vaccinationWorldData2, countries)
 
     const icons = getIcons()
 
     let frames = []
     
-    for (vaccinationCountryData of vaccinationWorldData) {
+    for (vaccinationCountryData of vaccinationWorldData2) {
         try {
             frames.push({
                 text: beautifyNumber(vaccinationCountryData.people_vaccinated),
