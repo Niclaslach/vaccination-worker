@@ -7,7 +7,7 @@ addEventListener('fetch', event => {
 
 addEventListener("scheduled", event => {
     event.waitUntil(handleUpdateData())
-  })
+})
 
 /**
  * Respond to the request
@@ -28,7 +28,7 @@ async function handleRequest(request) {
 
 async function handleUpdateData() {
     const vaccinationWorldData = await getData()
-    
+
     await vaccination_KV.put("vaccinationWorldData", JSON.stringify(vaccinationWorldData))
 
     return new Response(`Updated ${vaccinationWorldData.length} Countries`, { status: 200 })
@@ -39,12 +39,15 @@ async function handleUpdateData() {
 async function handleLaMetric(request) {
 
     const { searchParams } = new URL(request.url)
+    //vaccination_KV.put("lastRequestDEV", JSON.stringify(request.url)) //Comment out for Deployment
+    console.log(searchParams.toString())
     const duration = 2 * 60 * 1000
-    console.log(searchParams.get("countries"))
-    let countries = []
-    try { countries = searchParams.get("countries").split(",") } catch {}
+    let countries = ['']
+    try { countries = searchParams.get("countries").split(",") } catch { }
+    const showCountryName = searchParams.get("showCountryName") == "true" ? true : false
+    const showDailyIncrease = searchParams.get("showDailyIncrease") == "Daily Increase" ? true : false
 
-    let vaccinationWorldData = await vaccination_KV.get("vaccinationWorldData", {type: "json"})
+    let vaccinationWorldData = await vaccination_KV.get("vaccinationWorldData", { type: "json" })
 
     console.log("ALL Countries Test")
     console.log(countries)
@@ -54,16 +57,19 @@ async function handleLaMetric(request) {
 
     let frames_touple = []
     let frame = []
-    
+
     for (vaccinationCountryData of vaccinationWorldData) {
         try {
-            frame.push({
-                text: vaccinationCountryData.country,
-                icon: icons[vaccinationCountryData.iso_code]
-            })
+            frame = []
+            if (showCountryName) {
+                frame.push({
+                    text: vaccinationCountryData.country,
+                    icon: icons[vaccinationCountryData.iso_code]
+                })
+            }
 
             frame.push({
-                text: beautifyNumber(vaccinationCountryData.people_vaccinated),
+                text: beautifyNumber(showDailyIncrease ? vaccinationCountryData.daily_vaccinations : vaccinationCountryData.people_vaccinated),
                 duration: duration,
                 icon: icons[vaccinationCountryData.iso_code],
                 goalData: {
@@ -72,23 +78,19 @@ async function handleLaMetric(request) {
                     end: 100
                 }
             })
-
-            if (frame[1].icon == undefined || 
-                frame[1].text == undefined || 
-                frame[1].goalData.current == undefined) 
-                {
-                throw new Error()
+            console.log(frame.length-1)
+            if (frame[frame.length-1].icon == undefined ||
+                frame[frame.length-1].text == undefined ||
+                frame[frame.length-1].goalData.current == undefined) {
+            } else {
+                frames_touple.push(frame)
             }
-            
 
-            frames_touple.push(frame)
-            frame = []
-            
         }
-        catch {}
+        catch { }
     }
 
-    
+
     frames_touple.sort(() => Math.random() - 0.5)
     frames = []
 
@@ -96,8 +98,8 @@ async function handleLaMetric(request) {
         frames.push(touple[0])
         frames.push(touple[1])
     }
-    
-    return new Response(JSON.stringify({frames: frames}), { status: 200 })
+
+    return new Response(JSON.stringify({ frames: frames }), { status: 200 })
 }
 
 
@@ -131,13 +133,14 @@ async function getData() {
     }
 
     return latestVaccinations
-    
+
 }
 
 
-function getCountries(data, countries){
+function getCountries(data, countries) {
 
-    if (countries.length == 0) {
+    if (countries[0] == '') {
+        console.log(`No Country Parameter`)
         return data
     }
 
@@ -157,7 +160,7 @@ function getCountries(data, countries){
 
 function beautifyNumber(int) {
     const str = String(int)
-    return String((str.length > 7) ? str.substr(0, str.length - 6) + "." + str.substr(str.length - 6, 3) + "m" : str);
+    return String((str.length > 7) ? str.substr(0, str.length - 6) + "." + str.substr(str.length - 6, Math.max(11-str.length,0)) + "m" : str);
 }
 
 
