@@ -41,29 +41,44 @@ async function handleLaMetric(request) {
     const { searchParams } = new URL(request.url)
     //vaccination_KV.put("lastRequestDEV", JSON.stringify(request.url)) //Comment out for Deployment
     console.log(searchParams.toString())
-    const duration = 2 * 60 * 1000
+    let duration = NaN
+    try { duration = Math.ceil(parseFloat(searchParams.get("duration")) * 60 * 1000 )} catch { }
+    duration = isNaN(duration)? 2 * 60 * 1000 : duration
+    console.log(`duration = ${duration}`)
+
     let countries = ['']
     try { countries = searchParams.get("countries").split(",") } catch { }
     const showCountryName = searchParams.get("showCountryName") == "true" ? true : false
+    const showUpdateDate = searchParams.get("showUpdateDate") == "true" ? true : false
     const showDailyIncrease = searchParams.get("showDailyIncrease") == "Daily Increase" ? true : false
 
     let vaccinationWorldData = await vaccination_KV.get("vaccinationWorldData", { type: "json" })
 
+
     console.log("ALL Countries Test")
     console.log(countries)
-    vaccinationWorldData = getCountries(vaccinationWorldData, countries)
+    vaccinationWorldData = shuffleArray(getCountries(vaccinationWorldData, countries))
 
     const icons = getIcons()
 
-    let frames_touple = []
+    let frames = []
     let frame = []
 
+    
+    
     for (vaccinationCountryData of vaccinationWorldData) {
         try {
             frame = []
             if (showCountryName) {
                 frame.push({
                     text: vaccinationCountryData.country,
+                    icon: icons[vaccinationCountryData.iso_code]
+                })
+            }
+
+            if(showUpdateDate) {
+                frame.push({
+                    text: vaccinationCountryData.date,
                     icon: icons[vaccinationCountryData.iso_code]
                 })
             }
@@ -78,12 +93,15 @@ async function handleLaMetric(request) {
                     end: 100
                 }
             })
-            console.log(frame.length-1)
+            console.log( )
             if (frame[frame.length-1].icon == undefined ||
                 frame[frame.length-1].text == undefined ||
-                frame[frame.length-1].goalData.current == undefined) {
+                frame[frame.length-1].goalData.current == undefined ) {
+            } else if ((frame.length +frames.length) >20) {
+                
+                break
             } else {
-                frames_touple.push(frame)
+                frames = frames.concat(frame)
             }
 
         }
@@ -91,13 +109,7 @@ async function handleLaMetric(request) {
     }
 
 
-    frames_touple.sort(() => Math.random() - 0.5)
-    frames = []
-
-    for (touple of frames_touple) {
-        frames.push(touple[0])
-        frames.push(touple[1])
-    }
+    console.log(`Number of frames returned = ${frames.length}`)
 
     return new Response(JSON.stringify({ frames: frames }), { status: 200 })
 }
@@ -163,6 +175,15 @@ function beautifyNumber(int) {
     return String((str.length > 7) ? str.substr(0, str.length - 6) + "." + str.substr(str.length - 6, Math.max(11-str.length,0)) + "m" : str);
 }
 
+function shuffleArray(array) { //Source: http://thenewcode.com/1095/Shuffling-and-Sorting-JavaScript-Arrays
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
+}
 
 function getIcons() {
     return {
