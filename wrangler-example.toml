@@ -6,5 +6,5 @@ workers_dev = true
 route = ""
 zone_id = ""
 kv_namespaces = [ 
-         { binding = "vaccination_KV", id = "e2e2e6b9ad824bc986feeba870f4ec6e" }
+         { binding = "vaccination_KV", id = "<HAS TO BE CREATED>" }
 ]
