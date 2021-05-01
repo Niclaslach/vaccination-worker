@@ -42,14 +42,15 @@ async function handleLaMetric(request) {
     //vaccination_KV.put("lastRequestDEV", JSON.stringify(request.url)) //Comment out for Deployment
     console.log(searchParams.toString())
     let duration = NaN
-    try { duration = Math.ceil(parseFloat(searchParams.get("duration")) * 60 * 1000 )} catch { }
+    try { duration = Math.ceil(parseFloat(searchParams.get("duration")) * 1000 )} catch { }
     duration = isNaN(duration)? 2 * 60 * 1000 : duration
     console.log(`duration = ${duration}`)
 
     let countries = ['']
     try { countries = searchParams.get("countries").split(",") } catch { }
     const showCountryName = searchParams.get("showCountryName") == "true" ? true : false
-    const showUpdateDate = searchParams.get("showUpdateDate") == "true" ? true : false
+    const showDate = searchParams.get("showDate") == "true" ? true : false
+    const sortCountriesByDate = searchParams.get("sortCountriesByDate") == "true" ? true : false
     const showDailyIncrease = searchParams.get("showDailyIncrease") == "Daily Increase" ? true : false
 
     let vaccinationWorldData = await vaccination_KV.get("vaccinationWorldData", { type: "json" })
@@ -58,27 +59,35 @@ async function handleLaMetric(request) {
     console.log("ALL Countries Test")
     console.log(countries)
     vaccinationWorldData = shuffleArray(getCountries(vaccinationWorldData, countries))
+    if (sortCountriesByDate) { 
+        vaccinationWorldData.sort(function(a, b) {
+            var keyA = a.date,
+              keyB = b.date;
+            // Compare the 2 dates
+            if (keyA < keyB) return 1;
+            if (keyA > keyB) return -1;
+            return 0;
+          })
+    }
 
     const icons = getIcons()
 
     let frames = []
     let frame = []
-
+    let text = ""
     
     
     for (vaccinationCountryData of vaccinationWorldData) {
         try {
             frame = []
             if (showCountryName) {
+                if (showDate) {
+                    text = vaccinationCountryData.country + " " + vaccinationCountryData.date
+                } else {
+                    text = vaccinationCountryData.country
+                }
                 frame.push({
-                    text: vaccinationCountryData.country,
-                    icon: icons[vaccinationCountryData.iso_code]
-                })
-            }
-
-            if(showUpdateDate) {
-                frame.push({
-                    text: vaccinationCountryData.date,
+                    text: text,
                     icon: icons[vaccinationCountryData.iso_code]
                 })
             }
