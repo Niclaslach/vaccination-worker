@@ -160,6 +160,13 @@ async function getData() {
 
 function getCountries(data, countries) {
 
+    const index = countries.indexOf("World");
+    
+    if (index !== -1) {
+        countries[index] = "OWID_WRL";
+    } // Replaces World with the iso_code used in the data
+
+
     if (countries[0] == '') {
         console.log(`No Country Parameter`)
         return data
@@ -257,6 +264,7 @@ function getIcons() {
         UKR: "i45043",
         GBR: "i44343",
         USA: "i45044",
-        VNM: "i45045"
+        VNM: "i45045",
+        OWID_WRL: "i44343"
     }
 }
